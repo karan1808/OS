@@ -11,96 +11,110 @@
 #define SIZE_D 5
 
  
-typedef int buffer_t;
-buffer_t buffer[SIZE_D];  
-int index_buffer;
+typedef int BUFFER_ARRAY;
+BUFFER_ARRAY buffer[SIZE_D];  
+
+int last_pointer;
 
 
-sem_t buffer_mutex;
-sem_t full_sem;
-sem_t empty_sem;
+sem_t mutex_BUUFER_ARRAY;
+sem_t COMPLETE_FULL;
+sem_t EMPTY;
  
  
 
 
 
-void insertbuffer(buffer_t value)  
+void insert_in_array(BUFFER_ARRAY value)  
 {
     if (index_buffer < SIZE_D) 
     {
        buffer[index_buffer++] = value;
     } 
-    else 
-    {
-        printf("Buffer overflow\n");
-    }
+    
 }
  
-buffer_t dequeuebuffer() 
+BUFFER_ARRAY consuming_array() 
 {
-    if (index_buffer > 0) 
-    {      return buffer[--index_buffer]; } else {printf("Buffer underflow\n");}
-    return 0;
+    if (index_buffer > 0) { return buffer[--index_buffer];} 
 }
  
+
+void *consumer(void *thread_n) 
+{
+    int numb_thread = *(int *)thread_n;
+    printf("entered consumer %d\n",numb_thread);
+    BUFFER_ARRAY value;
+    int i=0;
+      
+        sem_wait(&EMPTY);
+        sem_wait(&mutex_BUUFER_ARRAY);
+        value = consuming_array(value);
+        sem_post(&mutex_BUUFER_ARRAY);
+        sem_post(&COMPLETE_FULL); 
+        printf("Consumer %d dequeue %d from buffer\n", numb_thread, value);
+   
+    
+}
+
+
+
  
 void *producer(void *thread_n) 
 {
     int numb_thread = *(int *)thread_n;
     printf("entered producer %d\n",numb_thread);
-    buffer_t value;
+    BUFFER_ARRAY value;
     int i=0;
         sleep(rand() % 10);
         value = rand() % 100;
-        sem_wait(&full_sem); 
-        sem_wait(&buffer_mutex);
-        insertbuffer(value);
-        sem_post(&buffer_mutex);
-        sem_post(&empty_sem); 
+        sem_wait(&COMPLETE_FULL); 
+        sem_wait(&mutex_BUUFER_ARRAY);
+        insert_in_array(value);
+        sem_post(&mutex_BUUFER_ARRAY);
+        sem_post(&EMPTY); 
         printf("Producer %d added %d to buffer\n", numb_thread, value);
         
 }
+
+
+
+
+
+
+
+
  
-void *consumer(void *thread_n) 
-{
-    int numb_thread = *(int *)thread_n;
-    printf("entered consumer %d\n",numb_thread);
-    buffer_t value;
-    int i=0;
-      
-        sem_wait(&empty_sem);
-        sem_wait(&buffer_mutex);
-        value = dequeuebuffer(value);
-        sem_post(&buffer_mutex);
-        sem_post(&full_sem); 
-        printf("Consumer %d dequeue %d from buffer\n", numb_thread, value);
-   
-    
-}
- 
-int main(int argc, int **argv) 
+int main() 
 {
     
     index_buffer = 0;
  
-    sem_init(&buffer_mutex,
-             0,
-    // int pshared. 0 = shared between threads of process,  1 = shared between processes
-             1);
-    // value of the semaphore
-    sem_init(&full_sem,0,SIZE_D);
-    sem_init(&empty_sem,0,0);
-    pthread_t thread_producer[NUMB_THREADS];// threads for producer   
-    pthread_t thread_consumer[NUMB_THREADS];// threads for producer
+    sem_init(&mutex_BUUFER_ARRAY,0,1);
+    sem_init(&COMPLETE_FULL,0,SIZE_D);
+    sem_init(&EMPTY,0,0);
+    
+
+    pthread_t thread_producer[NUMB_THREADS];  
+    pthread_t thread_consumer[NUMB_THREADS];
+    
+
+
     int numb_thread[NUMB_THREADS];
     for (int i = 0; i < NUMB_THREADS;i++) 
-    {numb_thread[i] = i;
+    {
+
+     numb_thread[i] = i;
      pthread_create(thread_producer + i,NULL,producer,numb_thread + i);
      pthread_create(thread_consumer + i,NULL,consumer,numb_thread + i);
+    
     }
-     for (int i = 0; i < NUMB_THREADS; i++)
-    { pthread_join(thread_producer[i], NULL);
-      pthread_join(thread_consumer[i], NULL);
+    
+    for (int i = 0; i < NUMB_THREADS; i++)
+    { 
+    	pthread_join(thread_producer[i], NULL);
+        pthread_join(thread_consumer[i], NULL);
     }
+    
     return 0;
 }
