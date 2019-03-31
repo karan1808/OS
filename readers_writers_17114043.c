@@ -11,61 +11,94 @@
 
 
 sem_t wrt;
-// semaphore to control mutual excision b/w two writers and (a writer)&(a reader) 
 sem_t mutex; 
-// semaphore to control mutual excision b/w two writers and two readers
+
+
 int read_count=0;
-void give_content()
-{ int value;
-  value=10;
-FILE *fp;
-fp= fopen ("intermediate.txt", "w");     
-for(int i = 0; i < value;i++)
-{
-  fprintf (fp, "This is line %d\n",i + 1);}fclose(fp);}
-void read_content()
-{  FILE *fptr;
-   fptr = fopen("intermediate.txt", "r");
-   if (fptr == NULL)
-      { printf("Cannot open file \n");
-        exit(0);
-      }
+
+void data_read()
+{  
+	FILE *file_reader;
+     file_reader = fopen("intermediate.txt", "r");
+   
       char chh;
-   chh = fgetc(fptr);
-     while (chh != EOF)
-      {
-       printf ("%c", chh);
-      chh = fgetc(fptr);}
-     fclose(fptr);
+      chh = fgetc(file_reader);
+      
+       while (chh != EOF)
+       {
+           printf ("%c", chh);
+           chh = fgetc(file_reader);
+       }
+     
+     fclose(file_reader);
 }
-void *writer(void *thread_n)  
-{
-  int n1=*(int *)thread_n;
-   sem_wait(&wrt);
-   give_content();
-   printf("writer %d completed it's work in file\n", n1);  
-   sem_post(&wrt);    
+
+
+
+void data_specify()
+{ 
+
+     FILE *file_reader;
+     file_reader= fopen ("intermediate.txt", "w");     
+     
+     for(int i = 0; i < rand()%50;i++)
+     {
+       fprintf (file_reader, "This is line %d\n",i + 1);
+     }
+
+     
+     fclose(file_reader);
+
 }
+
+
+
+
+
 
 void *reader(void *thread_n)
 {
-   int n1=*(int *)thread_n;
+   int numb=*(int *)thread_n;
 
     sem_wait(&mutex);
-    read_count++;
-    if(read_count==1)
+        read_count++;
+        if(read_count==1)
     sem_wait(&wrt);
+    
     sem_post(&mutex);
-    read_content();
-    printf("reader %d completed it's work in file\n", n1);
+    
+    data_read();
+    
+    
     sem_wait(&mutex);
-    read_count--;
-    if(read_count==0)
+         read_count--;
+         if(read_count==0)
     sem_post(&wrt);
+    
     sem_post(&mutex);  
 }
 
-int main(int argc, int **argv) 
+
+void *writer(void *thread_n)  
+{
+   int numb=*(int *)thread_n;
+   
+   sem_wait(&wrt);
+      data_specify();
+      printf("writer %d completed it's work in file\n", numb);  
+   sem_post(&wrt);    
+
+}
+
+
+
+
+
+
+
+
+
+int main() 
 {
    sem_init(&wrt,0,1); 
    sem_init(&mutex,0,1);  
