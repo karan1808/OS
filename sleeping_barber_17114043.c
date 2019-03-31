@@ -16,7 +16,7 @@ sem_t Barber;
 // used to call customers to cutting chair
 sem_t Seats;
 //  to protect Free_Seats variable
-sem_t print;    
+    
 int Free_Seats=NUMB_FREESEATS;
 void *barber(void *thread_n)
 {
@@ -43,17 +43,16 @@ void *customer(void *thread_n)
           {
                   /* sitting sem_wait.*/
                 Free_Seats--; 
-               printf("%dseated and no of persons seated is %d\n", n1,NUMB_FREESEATS-Free_Seats);  
+                
                    /* notify the barber. */
                  sem_post(&Customers); 
                        /* release the lock */
                  sem_post(&Seats); 
                     /* wait in the waiting room if barber is busy. */
-                 sem_wait(&print); 
-                 printf("%dhaircut and no of persons seated is  %d\n", n1,NUMB_FREESEATS-Free_Seats);
+                 
                  sem_wait(&Barber);
-                 printf("%dcompleted\n", n1);
-                 sem_post(&print); 
+                 
+                 
                   // customer is having hair cut 
             }else 
             {   /* release the lock */
@@ -67,7 +66,6 @@ int main(int argc, int **argv)
    sem_init(&Customers,0,0);
    sem_init(&Barber,0,0);
    sem_init(&Seats,0,1);
-   sem_init(&print,0,1);
    pthread_t thread_customers[CUSTOMER_NUMB];
    pthread_t thread_barber[1];
    int thread_numb[CUSTOMER_NUMB];
