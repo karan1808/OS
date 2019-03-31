@@ -7,14 +7,8 @@
 
 #define NUMBER_OF_SMOKERS 3
 
-//personA tobacco
 
-//personB paper
-
-//personC match
-
-
-sem_t agentsem;
+sem_t provider;
 sem_t Tobacco; 
 sem_t Paper;
 sem_t Match;
@@ -22,51 +16,89 @@ sem_t Match;
 _Bool isTobacco=0,isPaper=0,isMatch=0;
 
 
-sem_t Tobaccosem;
+sem_t invoking_tabbbco_person;
 
-sem_t Papersem;
+sem_t invoking_paper_pesron ;
 
-sem_t Matchsem;  
+sem_t invoking_paper_person;  
 
 
 
 sem_t mutex;
 
 
-_Bool done[NUMBER_OF_SMOKERS];  
+_Bool satisfied[NUMBER_OF_SMOKERS];
+  
 
 
-void make()
+void producing()
 {
-  int val=rand()%3;
-  printf("val %d\n",val);
-  sleep(val);
+  sleep(15);
 }
+
 void *agent()
-{   while(1)
-    {
-      sem_wait(&agentsem);  
+{  
+ while(1)
+{
+      sem_wait(&provider);  
       sem_wait(&mutex);
-      int select=rand()%3;
-        while(done[select])
-        {  int k1=NUMBER_OF_SMOKERS;
-           select=(select+1)%k1;
+      int choose=rand()%3;
+      while(satisfied[choose])
+      {  
+           choose=(choose+1)%((int)NUMBER_OF_SMOKERS);
         } 
-    if(select!=0)
+    if(choose!=0)
     {
     sem_post(&Tobacco);
     }
-    if(select!=1)
+    if(choose!=1)
     {
     sem_post(&Paper);  
     }
-    if(select!=2)
+    if(choose!=2)
     {
     sem_post(&Match);
       }
     sem_post(&mutex);
     }       
 }
+
+
+
+void *match()
+{
+  sem_wait(&invoking_paper_person);
+  printf("person_with_mathes got chance\n");
+  producing();
+    satisfied[2]=1;
+    printf("person_with_mathes satisfied with this\n");
+  sem_post(&provider);   
+}
+
+void *tobacco()
+{
+
+  sem_wait(&invoking_tabbbco_person);
+  printf("person_with_tabbco got chance\n");
+  producing();
+  satisfied[0]=1;
+  printf("person_with_tabbabco satisfied with this\n");
+  sem_post(&provider);   
+}
+
+void *paper()
+{
+  sem_wait(&invoking_paper_pesron );
+  printf("person_with_paper got chance\n");
+  producing();
+  satisfied[1]=1;
+  printf("person_with_paper satisfied with this\n");
+  sem_post(&provider);   
+}
+
+
+
+
 void *pusherA()
 {while(1)
   {
@@ -74,13 +106,13 @@ void *pusherA()
   sem_wait(&mutex);
     if(isPaper)
     {   isPaper=0;
-      printf("invoked personC");
-        sem_post(&Matchsem);
+      printf("giving the ingredients to the person with matches");
+        sem_post(&invoking_paper_person);
       }
     else if(isMatch)
     { isMatch=0;
-       printf("invoked personB");
-         sem_post(&Papersem);
+       printf("giving the ingredients to the person with paper");
+         sem_post(&invoking_paper_pesron );
     }
     else
     {
@@ -98,14 +130,14 @@ void *pusherB()
     if(isMatch)
     {
       isMatch=1; 
-      printf("invoked personA");
-      sem_post(&Tobaccosem); 
+      printf("giving the ingredients to the person with tobacco");
+      sem_post(&invoking_tabbbco_person); 
     }
     else if(isTobacco)
     {
        isTobacco=0;
-       printf("invoked personC");
-       sem_post(&Matchsem);
+      printf("giving the ingredients to the person with matches");
+       sem_post(&invoking_paper_person);
     }
     else
     {
@@ -123,14 +155,14 @@ void  *pusherC()
     if(isPaper)
     {
       isPaper=1; 
-      printf("invoked personA");
-      sem_post(&Tobaccosem); 
+      printf("giving the ingredients to the person with tobacco");
+      sem_post(&invoking_tabbbco_person); 
     }
     else if(isTobacco)
     {
        isTobacco=0;
-       printf("invoked personB");
-       sem_post(&Papersem);
+       printf("giving the ingredients to the person with paper");
+       sem_post(&invoking_paper_pesron );
     }
     else
     {
@@ -143,48 +175,15 @@ void  *pusherC()
 }
 
 
-void *tobacco()
-{
 
-  sem_wait(&Tobaccosem);
-  printf("personA got chance\n");
-  make();
-  done[0]=1;
-  printf("personA done with this\n");
-  sem_post(&agentsem);   
-}
-void *paper()
-{
-  sem_wait(&Papersem);
-  printf("personB got chance\n");
-  make();
-  done[1]=1;
-  printf("personB done with this\n");
-  sem_post(&agentsem);   
-}
-
-void *match()
-{
-  sem_wait(&Matchsem);
-  printf("personC got chance\n");
-  make();
-    done[2]=1;
-    printf("personC done with this\n");
-  sem_post(&agentsem);   
-}
-
-
-int main(int argc, int **argv) 
+int main() 
 {
     
-    for (int i = 0; i < NUMBER_OF_SMOKERS; ++i)
-    {
-      done[i]=0;
-    }
-     sem_init(&agentsem,0,1);
-     sem_init(&Papersem,0,0);
-     sem_init(&Matchsem,0,0);
-     sem_init(&Tobaccosem,0,0);
+    
+     sem_init(&provider,0,1);
+     sem_init(&invoking_paper_pesron ,0,0);
+     sem_init(&invoking_paper_person,0,0);
+     sem_init(&invoking_tabbbco_person,0,0);
      sem_init(&Paper,0,0);
      sem_init(&Match,0,0);
      sem_init(&Tobacco,0,0);
@@ -192,20 +191,35 @@ int main(int argc, int **argv)
      sem_init(&mutex,0,1);
 
 
+    for (int i = 0; i < NUMBER_OF_SMOKERS; ++i)
+    {
+      satisfied[i]=0;
+    }
+
+
      pthread_t thread[NUMBER_OF_SMOKERS];
      pthread_t pushers[NUMBER_OF_SMOKERS];
      
      pthread_create(thread + 0,NULL,*tobacco,NULL);
-     pthread_create(pushers + 0,NULL,*pusherA,NULL);
      pthread_create(thread + 1,NULL,*match,NULL);
-     pthread_create(pushers + 1,NULL,*pusherB,NULL);
      pthread_create(thread + 2,NULL,*paper,NULL);  
+     
+     pthread_create(pushers + 0,NULL,*pusherA,NULL);
+     pthread_create(pushers + 1,NULL,*pusherB,NULL);
      pthread_create(pushers + 2,NULL,*pusherC,NULL);
+     
      pthread_t Agent[1];
      pthread_create(Agent+0,NULL,*agent,NULL);   
-    for (int i = 0; i < NUMBER_OF_SMOKERS; ++i)
-      {
-         pthread_join(thread[i],NULL);
-      }    
+    
+     int i=0;
+    while(i<NUMBER_OF_SMOKERS)
+    {
+       pthread_join(thread[i],NULL);
+      i++;
+    }
+  
+  
+        
+    
     return 0;
 } 
